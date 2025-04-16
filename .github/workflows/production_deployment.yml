@@ -1,23 +1,50 @@
 name: Production Deployment
+
 on:
   push:
     branches: [main]
-jobs:
 
+jobs:
   converge:
     name: Converge
     runs-on: ubuntu-latest
+    
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Converge
+      - name: Set up Minikube
+        run: |
+          # Установка Minikube
+          #curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          #sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Установка kubectl
+          #curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          #sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+          
+          # Запуск Minikube
+          minikube start --force
+          minikube status
+          
+          # Проверка доступа
+          kubectl get pods -A
+          kubectl config view --flatten > kubeconfig.yaml
+          
+          # Экспорт kubeconfig в base64 для последующих шагов
+          echo "KUBE_CONFIG_BASE64=$(cat kubeconfig.yaml | base64 -w 0)" >> $GITHUB_ENV
+
+      - name: Converge with Werf
         uses: werf/actions/converge@v1.2
         with:
           env: production
-          kube-config-base64-data: ${{ secrets.KUBE_CONFIG_BASE64_DATA }}
+          kube-config-base64-data: ${{ env.KUBE_CONFIG_BASE64 }}
         env:
           WERF_SET_ENV_URL: "envUrl=http://habrapp.example.com"
+
+      - name: Verify deployment
+        run: |
+          kubectl get deployments -A
+          kubectl get pods -A
