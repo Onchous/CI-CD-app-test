@@ -1,2 +1,2 @@
-# CI-CD-app-test
-CI/CD-app-test
+# habr-action-tests
+Test project for an article about GitHub Actions
